@@ -11,16 +11,19 @@
 #include <sys/un.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <stdbool.h>
 
 #define SOCKET_PATH "/tmp/pumpkin_socket"
 #define LOG_ERROR(fmt, ...) fprintf(stderr, "ERROR: " fmt "\n", ##__VA_ARGS__)
 #define LOG_INFO(fmt, ...) fprintf(stderr, "INFO: " fmt "\n", ##__VA_ARGS__)
 #define BUFFER_SIZE 4096
 
-// Fix the forward_packets function to use a simpler format
+// Modified forward_packets function
 void forward_packets(int udp_sock, int unix_sock) {
     struct pollfd fds[2];
     char buffer[BUFFER_SIZE];
+    char handshake_msg[] = "PUMPKIN_READY";
+    bool client_connected = false;
     
     // Set up poll structures
     fds[0].fd = udp_sock;
@@ -38,8 +41,54 @@ void forward_packets(int udp_sock, int unix_sock) {
             break;
         }
         
-        // Check for data from UDP socket (from network)
-        if (fds[0].revents & POLLIN) {
+        // Unix socket activity - check if we have a client connecting
+        if (fds[1].revents & POLLIN) {
+            // If not yet connected with a client, check for connection
+            if (!client_connected) {
+                // Read the connection handshake
+                char hello[20];
+                struct sockaddr_un from_addr;
+                socklen_t fromlen = sizeof(from_addr);
+                
+                // Wait for a "HELLO" message from client
+                ssize_t bytes = recvfrom(unix_sock, hello, sizeof(hello), 0,
+                                       (struct sockaddr*)&from_addr, &fromlen);
+                
+                if (bytes > 0 && strncmp(hello, "HELLO", 5) == 0) {
+                    // Send our ready message back
+                    sendto(unix_sock, handshake_msg, strlen(handshake_msg), 0,
+                           (struct sockaddr*)&from_addr, fromlen);
+                    client_connected = true;
+                    LOG_INFO("Client connected to socket");
+                }
+            } else {
+                // Handle normal packet forwarding from Unix to UDP
+                ssize_t bytes = recv(unix_sock, buffer, BUFFER_SIZE, 0);
+                
+                if (bytes > 0) {
+                    // The first part contains the destination address
+                    struct sockaddr_in dest_addr;
+                    if (bytes > sizeof(dest_addr)) {
+                        memcpy(&dest_addr, buffer, sizeof(dest_addr));
+                        
+                        // Send the remaining data to the network
+                        ssize_t sent = sendto(udp_sock, 
+                                            buffer + sizeof(dest_addr),
+                                            bytes - sizeof(dest_addr), 
+                                            0, 
+                                            (struct sockaddr*)&dest_addr, 
+                                            sizeof(dest_addr));
+                        
+                        if (sent < 0) {
+                            LOG_ERROR("Failed to forward to network: %s", strerror(errno));
+                        }
+                    }
+                }
+            }
+        }
+        
+        // UDP socket activity - forward to Unix socket if client connected
+        if (fds[0].revents & POLLIN && client_connected) {
             struct sockaddr_in client_addr;
             socklen_t addr_len = sizeof(client_addr);
             
@@ -57,31 +106,6 @@ void forward_packets(int udp_sock, int unix_sock) {
                 ssize_t sent = send(unix_sock, buffer, bytes + sizeof(client_addr), 0);
                 if (sent < 0) {
                     LOG_ERROR("Failed to forward to Unix socket: %s", strerror(errno));
-                }
-            }
-        }
-        
-        // Check for data from Unix socket (from app)
-        if (fds[1].revents & POLLIN) {
-            ssize_t bytes = recv(unix_sock, buffer, BUFFER_SIZE, 0);
-            
-            if (bytes > 0) {
-                // The first part contains the destination address
-                struct sockaddr_in dest_addr;
-                if (bytes > sizeof(dest_addr)) {
-                    memcpy(&dest_addr, buffer, sizeof(dest_addr));
-                    
-                    // Send the remaining data to the network
-                    ssize_t sent = sendto(udp_sock, 
-                                        buffer + sizeof(dest_addr),
-                                        bytes - sizeof(dest_addr), 
-                                        0, 
-                                        (struct sockaddr*)&dest_addr, 
-                                        sizeof(dest_addr));
-                    
-                    if (sent < 0) {
-                        LOG_ERROR("Failed to forward to network: %s", strerror(errno));
-                    }
                 }
             }
         }
@@ -217,6 +241,13 @@ int main(int argc, const char * argv[]) {
     // Allow non-root processes to connect to our Unix socket
     chmod(SOCKET_PATH, 0666);
     
+    // Send an initial handshake packet to any client that connects
+    char handshake_msg[] = "PUMPKIN_READY";
+    struct sockaddr_un client_addr;
+    memset(&client_addr, 0, sizeof(client_addr));
+    client_addr.sun_family = AF_UNIX;
+    // We'll wait for a client to connect in the forward_packets loop
+
     // Indicate success to parent process
     printf("0\n");
     fflush(stdout);

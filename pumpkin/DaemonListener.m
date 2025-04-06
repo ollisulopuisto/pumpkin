@@ -139,6 +139,42 @@ static void cbListener(CFSocketRef sockie,CFSocketCallBackType cbt,CFDataRef cba
                                userInfo:nil] raise];
             }
             
+            // Send a handshake to the helper and wait for response
+            char hello[] = "HELLO";
+            if (send(unix_sock, hello, strlen(hello), 0) < 0) {
+                close(unix_sock);
+                [[NSException exceptionWithName:@"ConnectionFailure"
+                              reason:[NSString stringWithFormat:@"Failed to send handshake to helper: %s", strerror(errno)]
+                              userInfo:nil] raise];
+            }
+
+            // Wait for response with timeout
+            fd_set readfds;
+            FD_ZERO(&readfds);
+            FD_SET(unix_sock, &readfds);
+            struct timeval tv;
+            tv.tv_sec = 2;  // 2 second timeout
+            tv.tv_usec = 0;
+
+            if (select(unix_sock + 1, &readfds, NULL, NULL, &tv) <= 0) {
+                close(unix_sock);
+                [[NSException exceptionWithName:@"ConnectionFailure"
+                              reason:@"Timeout waiting for helper response"
+                              userInfo:nil] raise];
+            }
+
+            // Read response
+            char response[20];
+            ssize_t bytes = recv(unix_sock, response, sizeof(response) - 1, 0);
+            if (bytes <= 0 || strncmp(response, "PUMPKIN_READY", 13) != 0) {
+                close(unix_sock);
+                [[NSException exceptionWithName:@"ConnectionFailure"
+                              reason:@"Invalid response from helper"
+                              userInfo:nil] raise];
+            }
+
+            [pumpkin log:@"Successfully established connection with helper"];
+            
             // Create a CFSocket wrapped around our Unix domain socket
             sockie = CFSocketCreateWithNative(kCFAllocatorDefault, unix_sock, 
                                          kCFSocketReadCallBack|kCFSocketDataCallBack,
