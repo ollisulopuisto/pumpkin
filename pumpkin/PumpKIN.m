@@ -45,7 +45,7 @@
 	    switch([en intValue]) {
 		case EADDRINUSE:
 		    {
-			int p = [[theDefaults.values valueForKey:@"bindPort"] intValue];
+			int p = [[theDefaults.values valueForKey:@"bindPort"] unsignedIntValue];
 			if(p==69) {
 			    a.informativeText = @"The OS reports that the address is already in use.\n\n"
 				"It probably means, that some other programm is listening on the TFTP port."
@@ -244,51 +244,154 @@
 }
 
 - (void)runBiportal:(char const**)args {
-    FILE *f=NULL;
-    AuthorizationRef a=nil;
+    FILE *f = NULL;
+    AuthorizationRef auth = NULL;
+    
     @try {
-	NSString *bip=[[NSBundle mainBundle] pathForAuxiliaryExecutable:@"biportal"];
-	struct stat st;
-	if(stat(bip.UTF8String, &st)) [NSException raise:@"ToolFailure" format:@"Can't see my tool"];
-	if(st.st_uid || !(st.st_mode&S_ISUID)) {
-	    OSStatus r = AuthorizationCreate(NULL, kAuthorizationEmptyEnvironment, kAuthorizationFlagDefaults, &a);
-	    if(r!=errAuthorizationSuccess)
-		[NSException raise:@"AuthFailure" format:@"failed to AuthorizationCreate(): %d",r];
-	    AuthorizationItem ai = {kAuthorizationRightExecute,0,NULL,0};
-	    AuthorizationRights ar = {1,&ai};
-	    r = AuthorizationCopyRights(a, &ar, NULL, kAuthorizationFlagDefaults|kAuthorizationFlagInteractionAllowed|kAuthorizationFlagPreAuthorize|kAuthorizationFlagExtendRights, NULL);
-	    if(r!=errAuthorizationSuccess)
-		[NSException raise:@"AuthFailure" format:@"failed to AuthorizationCopyRights(): %d",r];
-	    const char *args[] = { NULL };
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated"
-	    r = AuthorizationExecuteWithPrivileges(a,bip.UTF8String,
-						   kAuthorizationFlagDefaults, (char*const*)args, &f);
-#pragma GCC diagnostic pop
-	    if(r!=errAuthorizationSuccess)
-		[NSException raise:@"AuthFailure" format:@"failed to AuthorizationExecuteWithPrivileges(): %d",r];
-	    int e;
-	    int sr = fscanf(f, "%d", &e);
-	    fclose(f),f=NULL;
-	    if(sr!=1)
-		[NSException raise:@"ToolFailure" format:@"failed to setup tool"];
-	    if(e)
-		[NSException raise:@"ToolFailure" format:@"failed to setup tool, error code: %d",e];
-	}
-	*args = bip.UTF8String;
-	pid_t p = fork();
-	if(p<0) [NSException raise:@"ToolFailure" format:@"failed to fork"];
-	if(!p) execv(*args,(char**)args), exit(errno);
-	int r, wp;
-	while((wp=waitpid(p,&r,0))<0 && errno==EINTR);
-	if(wp!=p) [NSException raise:@"ToolFailure" format:@"failed to wait for tool"];
-	if(!WIFEXITED(r)) [NSException raise:@"ToolFailure" format:@"tool failed"];
-	if(WEXITSTATUS(r)) {
-	    [[NSException exceptionWithName:@"ToolFailure" reason:[NSString stringWithFormat:@"tool failed, error code: %d", WEXITSTATUS(r)] userInfo:@{@"errno": @WEXITSTATUS(r)}] raise];
-	}
-    }@finally {
-	if(f) fclose(f);
-	if(a) AuthorizationFree(a,kAuthorizationFlagDefaults);
+        NSString *biportalPath = [[NSBundle mainBundle] pathForAuxiliaryExecutable:@"biportal"];
+        struct stat st;
+        if (stat(biportalPath.UTF8String, &st)) {
+            // Try alternative locations if not found in standard location
+            biportalPath = [[NSBundle mainBundle] pathForResource:@"biportal" ofType:nil];
+            if (!biportalPath || stat(biportalPath.UTF8String, &st)) {
+                [NSException raise:@"ToolFailure" format:@"Can't locate biportal helper tool"];
+            }
+        }
+        
+        // Create authorization reference
+        OSStatus status = AuthorizationCreate(NULL, kAuthorizationEmptyEnvironment, 
+                                       kAuthorizationFlagDefaults, &auth);
+        if (status != errAuthorizationSuccess) {
+            [NSException raise:@"AuthFailure" format:@"Failed to create authorization: %d", (int)status];
+        }
+        
+        // Set up authorization rights for privileged execution
+        AuthorizationItem authItem = {kAuthorizationRightExecute, 0, NULL, 0};
+        AuthorizationRights authRights = {1, &authItem};
+        
+        // Request authorization with user prompt
+        status = AuthorizationCopyRights(auth, &authRights, NULL, 
+                            kAuthorizationFlagDefaults | 
+                            kAuthorizationFlagInteractionAllowed | 
+                            kAuthorizationFlagPreAuthorize | 
+                            kAuthorizationFlagExtendRights, NULL);
+        
+        if (status != errAuthorizationSuccess) {
+            [NSException raise:@"AuthFailure" format:@"Failed to obtain authorization: %d", (int)status];
+        }
+        
+        // Use the more modern approach if we're on 10.13+
+        if (@available(macOS 10.13, *)) {
+            [self log:@"Using direct approach to bind to privileged port..."];
+            
+            // Build command to launch the helper directly using NSTask
+            NSTask *task = [[NSTask alloc] init];
+            [task setLaunchPath:@"/usr/bin/osascript"];
+            
+            // Create a command that will launch biportal directly (not with -f flag)
+            NSString *osascriptCommand = [NSString stringWithFormat:
+                                         @"do shell script \"'%@' %@ %@\" with administrator privileges",
+                                         biportalPath, 
+                                         [NSString stringWithUTF8String:args[1]], // host address
+                                         [NSString stringWithUTF8String:args[2]]]; // port
+            
+            [task setArguments:@[@"-e", osascriptCommand]];
+            
+            NSPipe *outputPipe = [NSPipe pipe];
+            NSPipe *errorPipe = [NSPipe pipe];
+            [task setStandardOutput:outputPipe];
+            [task setStandardError:errorPipe];
+            
+            [self log:@"Launching helper with admin rights..."];
+            NSFileHandle *outputHandle = [outputPipe fileHandleForReading];
+            NSFileHandle *errorHandle = [errorPipe fileHandleForReading];
+            
+            @try {
+                [task launch];
+                
+                // Set up timeout to detect if the helper started successfully
+                NSDate *timeoutDate = [NSDate dateWithTimeIntervalSinceNow:10.0];
+                BOOL helperStarted = NO;
+                
+                // Poll for output until timeout 
+                while ([timeoutDate timeIntervalSinceNow] > 0 && !helperStarted) {
+                    // Check for output
+                    NSData *output = [outputHandle availableData];
+                    if (output.length > 0) {
+                        NSString *outputStr = [[NSString alloc] initWithData:output encoding:NSUTF8StringEncoding];
+                        [self log:@"Helper output: %@", outputStr];
+                        
+                        // Check for success message
+                        if ([outputStr hasPrefix:@"0"]) {
+                            [self log:@"Successfully launched helper for port %@ on %@", 
+                                     [NSString stringWithUTF8String:args[2]],
+                                     [NSString stringWithUTF8String:args[1]]];
+                            helperStarted = YES;
+                        }
+                        [outputStr release];
+                    }
+                    
+                    // Check for error output
+                    NSData *errorOutput = [errorHandle availableData];
+                    if (errorOutput.length > 0) {
+                        NSString *errorStr = [[NSString alloc] initWithData:errorOutput encoding:NSUTF8StringEncoding];
+                        [self log:@"Helper error: %@", errorStr];
+                        [errorStr release];
+                    }
+                    
+                    // Avoid high CPU usage
+                    usleep(100000); // 100ms
+                    
+                    // Allow UI to update
+                    [[NSRunLoop currentRunLoop] runMode:NSRunLoopCommonModes 
+                                             beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
+                }
+                
+                if (!helperStarted) {
+                    [task terminate];
+                    [NSException raise:@"ToolFailure" format:@"Helper tool did not start successfully"];
+                }
+                
+                // Keep task running - don't wait for it to complete since it runs in background
+                // We don't want to terminate it as it needs to stay running
+            }
+            @catch (NSException *e) {
+                [task terminate];
+                @throw;
+            }
+        } else {
+            // Original code for older macOS versions
+            #pragma GCC diagnostic push
+            #pragma GCC diagnostic ignored "-Wdeprecated"
+            const char *argsArray[] = { NULL };
+            status = AuthorizationExecuteWithPrivileges(auth, biportalPath.UTF8String,
+                                          kAuthorizationFlagDefaults, 
+                                          (char *const*)argsArray, &f);
+            #pragma GCC diagnostic pop
+            
+            if (status != errAuthorizationSuccess) {
+                [NSException raise:@"AuthFailure" 
+                          format:@"Failed AuthorizationExecuteWithPrivileges(): %d", status];
+            }
+            
+            int errorCode;
+            int scanResult = fscanf(f, "%d", &errorCode);
+            fclose(f);
+            f = NULL;
+            
+            if (scanResult != 1) {
+                [NSException raise:@"ToolFailure" format:@"Failed to read from helper tool"];
+            }
+            
+            if (errorCode != 0) {
+                [NSException raise:@"ToolFailure" 
+                          format:@"Helper tool setup failed with error: %d", errorCode];
+            }
+        }
+    }
+    @finally {
+        if (f) fclose(f);
+        if (auth) AuthorizationFree(auth, kAuthorizationFlagDefaults);
     }
 }
 
