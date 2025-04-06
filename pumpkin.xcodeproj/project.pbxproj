@@ -274,12 +274,21 @@
 			isa = PBXProject;
 			attributes = {
 				LastUpgradeCheck = 0820;
+				TargetAttributes = {
+					68DAEE0414118CB60007A630 = {
+						DevelopmentTeam = LWSR8T5392;
+					};
+					68DAEE2914118D370007A630 = {
+						DevelopmentTeam = LWSR8T5392;
+					};
+				};
 			};
 			buildConfigurationList = 68DAEDFF14118CB60007A630 /* Build configuration list for PBXProject "pumpkin" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				English,
 				en,
 			);
 			mainGroup = 68DAEDFA14118CB60007A630;
@@ -459,6 +468,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				COMBINE_HIDPI_IMAGES = YES;
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = LWSR8T5392;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "pumpkin/pumpkin-Prefix.pch";
 				INFOPLIST_FILE = "pumpkin/pumpkin-Info.plist";
@@ -473,7 +483,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				COMBINE_HIDPI_IMAGES = YES;
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = LWSR8T5392;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "pumpkin/pumpkin-Prefix.pch";
 				INFOPLIST_FILE = "pumpkin/pumpkin-Info.plist";
@@ -487,6 +499,8 @@
 		68DAEE3214118D370007A630 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = LWSR8T5392;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -494,6 +508,8 @@
 		68DAEE3314118D370007A630 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = LWSR8T5392;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 			};
