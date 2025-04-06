@@ -14,6 +14,8 @@
 #include <stdbool.h>
 #include <dirent.h>
 #include <signal.h>
+#include <limits.h>   // For PATH_MAX
+#include <time.h>     // For time() function
 
 #define SOCKET_PATH "/tmp/pumpkin_socket"
 #define LOG_ERROR(fmt, ...) fprintf(stderr, "ERROR: " fmt "\n", ##__VA_ARGS__)

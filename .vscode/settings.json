@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "poll.h": "c",
+        "un.h": "c",
+        "socket.h": "c"
+    }
+}
