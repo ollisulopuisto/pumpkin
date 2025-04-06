@@ -282,13 +282,13 @@
         
         // Use the more modern approach if we're on 10.13+
         if (@available(macOS 10.13, *)) {
-            [self log:@"Using direct approach to bind to privileged port..."];
+            [self log:@"Using modern approach to bind to privileged port..."];
             
             // Build command to launch the helper directly using NSTask
             NSTask *task = [[NSTask alloc] init];
             [task setLaunchPath:@"/usr/bin/osascript"];
             
-            // Create a command that will launch biportal directly (not with -f flag)
+            // Create a command that will launch biportal directly
             NSString *osascriptCommand = [NSString stringWithFormat:
                                          @"do shell script \"'%@' %@ %@\" with administrator privileges",
                                          biportalPath, 
@@ -302,65 +302,44 @@
             [task setStandardOutput:outputPipe];
             [task setStandardError:errorPipe];
             
-            [self log:@"Launching helper with admin rights..."];
+            [self log:@"Launching TFTP helper with admin rights..."];
             NSFileHandle *outputHandle = [outputPipe fileHandleForReading];
             NSFileHandle *errorHandle = [errorPipe fileHandleForReading];
             
             @try {
                 [task launch];
                 
-                // Set up timeout to detect if the helper started successfully
-                NSDate *timeoutDate = [NSDate dateWithTimeIntervalSinceNow:10.0];
-                BOOL helperStarted = NO;
-                
-                // Poll for output until timeout 
-                while ([timeoutDate timeIntervalSinceNow] > 0 && !helperStarted) {
-                    // Check for output
-                    NSData *output = [outputHandle availableData];
-                    if (output.length > 0) {
-                        NSString *outputStr = [[NSString alloc] initWithData:output encoding:NSUTF8StringEncoding];
-                        [self log:@"Helper output: %@", outputStr];
-                        
-                        // Check for success message
-                        if ([outputStr hasPrefix:@"0"]) {
-                            [self log:@"Successfully launched helper for port %@ on %@", 
-                                     [NSString stringWithUTF8String:args[2]],
-                                     [NSString stringWithUTF8String:args[1]]];
-                            helperStarted = YES;
-                        }
-                        [outputStr release];
+                // Read initial output to check for immediate errors
+                NSData *initialOutput = [outputHandle availableData];
+                if (initialOutput.length > 0) {
+                    NSString *outputStr = [[NSString alloc] initWithData:initialOutput encoding:NSUTF8StringEncoding];
+                    [self log:@"Helper output: %@", outputStr];
+                    
+                    // Check for success code (0)
+                    if (![outputStr hasPrefix:@"0"]) {
+                        [NSException raise:@"ToolFailure" format:@"Helper failed: %@", outputStr];
                     }
                     
-                    // Check for error output
-                    NSData *errorOutput = [errorHandle availableData];
-                    if (errorOutput.length > 0) {
-                        NSString *errorStr = [[NSString alloc] initWithData:errorOutput encoding:NSUTF8StringEncoding];
-                        [self log:@"Helper error: %@", errorStr];
-                        [errorStr release];
-                    }
-                    
-                    // Avoid high CPU usage
-                    usleep(100000); // 100ms
-                    
-                    // Allow UI to update
-                    [[NSRunLoop currentRunLoop] runMode:NSRunLoopCommonModes 
-                                             beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
+                    [outputStr release];
                 }
                 
-                if (!helperStarted) {
-                    [task terminate];
-                    [NSException raise:@"ToolFailure" format:@"Helper tool did not start successfully"];
+                // Check error output
+                NSData *errorOutput = [errorHandle availableData];
+                if (errorOutput.length > 0) {
+                    NSString *errorStr = [[NSString alloc] initWithData:errorOutput encoding:NSUTF8StringEncoding];
+                    [self log:@"Helper error output: %@", errorStr];
+                    [errorStr release];
                 }
                 
-                // Keep task running - don't wait for it to complete since it runs in background
-                // We don't want to terminate it as it needs to stay running
+                // Let the task continue running - it needs to stay alive to keep the socket open
+                [self log:@"TFTP helper launched successfully"];
             }
             @catch (NSException *e) {
                 [task terminate];
                 @throw;
             }
         } else {
-            // Original code for older macOS versions
+            // Legacy approach for older macOS versions
             #pragma GCC diagnostic push
             #pragma GCC diagnostic ignored "-Wdeprecated"
             const char *argsArray[] = { NULL };
@@ -387,6 +366,8 @@
                 [NSException raise:@"ToolFailure" 
                           format:@"Helper tool setup failed with error: %d", errorCode];
             }
+            
+            [self log:@"TFTP helper launched successfully"];
         }
     }
     @finally {

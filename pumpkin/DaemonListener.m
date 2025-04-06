@@ -9,8 +9,27 @@
 #include <sys/stat.h>
 #include <sys/un.h>
 
-static void cbListener(CFSocketRef sockie,CFSocketCallBackType cbt,CFDataRef cba,
-					   const void *cbd,void *i) {
+// Command types between PumpKIN and helper
+#define CMD_HELLO 1
+#define CMD_READY 2
+#define CMD_CONFIG 3
+#define CMD_TRANSFER_REQUEST 4
+#define CMD_TRANSFER_STATUS 5
+#define CMD_TRANSFER_DONE 6
+#define CMD_TRANSFER_APPROVE 7
+#define CMD_TRANSFER_DENY 8
+#define CMD_SHUTDOWN 9
+
+#define BUFFER_SIZE 8192
+
+typedef struct {
+    uint16_t cmd;
+    uint16_t transfer_id;
+    char data[BUFFER_SIZE - 4];
+} ipc_message_t;
+
+static void cbListener(CFSocketRef sockie, CFSocketCallBackType cbt, CFDataRef cba,
+                      const void *cbd, void *i) {
     [(DaemonListener*)i callbackWithType:cbt addr:cba data:cbd];
 }
 
@@ -18,61 +37,125 @@ static void cbListener(CFSocketRef sockie,CFSocketCallBackType cbt,CFDataRef cba
 
 -(void)callbackWithType:(CFSocketCallBackType)t addr:(CFDataRef)a data:(const void *)d {
     switch(t) {
-        case kCFSocketDataCallBack:
-        {
-            struct sockaddr_in *sin;
-            const char *payload;
-            size_t payload_len;
+        case kCFSocketDataCallBack: {
+            // Process incoming data from the Unix domain socket
+            ipc_message_t *msg = (ipc_message_t*)d;
             
-            if ([[pumpkin.theDefaults.values valueForKey:@"bindPort"] intValue] <= 1024) {
-                // For privileged ports, the first sizeof(struct sockaddr_in) bytes are the client address
-                sin = (struct sockaddr_in*)d;
-                payload = (const char*)d + sizeof(struct sockaddr_in);
-                payload_len = CFDataGetLength((CFDataRef)a) - sizeof(struct sockaddr_in);
-                
-                [pumpkin log:@"Received packet from %@:%d via helper", 
-                         [NSString stringWithCString:inet_ntoa(sin->sin_addr) encoding:NSUTF8StringEncoding],
-                         ntohs(sin->sin_port)];
-            } else {
-                // For non-privileged ports, use the address from the packet
-                sin = (struct sockaddr_in*)CFDataGetBytePtr(a);
-                payload = (const char*)d;
-                payload_len = CFDataGetLength((CFDataRef)a);
-            }
-            
-            if([pumpkin hasPeer:sin]) {
-                [pumpkin log:@"I'm already processing the request from %@", 
-                         [NSString stringWithSocketAddress:sin]];
-                return;
-            }
-            
-            // Create a TFTPPacket with just the payload data
-            if (payload_len > 0) {
-                NSData *packetData = [NSData dataWithBytes:payload length:payload_len];
-                TFTPPacket *p = [TFTPPacket packetWithData:packetData];
-                
-                switch([p op]) {
-                    case tftpOpRRQ: 
-                        [pumpkin log:@"Received RRQ for file %@", p.rqFilename];
-                        [[[SendXFer alloc] initWithPeer:sin andPacket:p] autorelease]; 
-                        break;
-                    case tftpOpWRQ: 
-                        [pumpkin log:@"Received WRQ for file %@", p.rqFilename];
-                        [[[ReceiveXFer alloc] initWithPeer:sin andPacket:p] autorelease]; 
-                        break;
-                    default:
-                        [pumpkin log:@"Invalid OP %d received from %@", p.op, 
-                                 [NSString stringWithSocketAddress:sin]];
-                        break;
+            switch(msg->cmd) {
+                case CMD_READY: {
+                    [pumpkin log:@"TFTP helper reported ready: %s", msg->data];
+                    
+                    // Send configuration
+                    [self sendConfiguration];
+                    break;
                 }
-            } else {
-                [pumpkin log:@"Received empty packet from socket"];
+                    
+                case CMD_TRANSFER_REQUEST: {
+                    // Parse transfer request data
+                    NSString *requestData = [NSString stringWithUTF8String:msg->data];
+                    NSArray *parts = [requestData componentsSeparatedByString:@"\n"];
+                    
+                    if (parts.count >= 4) {
+                        NSString *requestType = [parts objectAtIndex:0];
+                        NSString *clientIP = [parts objectAtIndex:1];
+                        NSString *filename = [parts objectAtIndex:2];
+                        NSString *mode = [parts objectAtIndex:3];
+                        
+                        [pumpkin log:@"Transfer request: %@ for file '%@' from %@", 
+                                 requestType, filename, clientIP];
+                        
+                        // Create a transfer object for UI display
+                        [self notifyTransferRequest:msg->transfer_id
+                                        requestType:requestType
+                                          clientIP:clientIP
+                                          filename:filename
+                                              mode:mode];
+                    }
+                    break;
+                }
+                    
+                case CMD_TRANSFER_STATUS: {
+                    [pumpkin log:@"Transfer %d status: %s", msg->transfer_id, msg->data];
+                    break;
+                }
+                    
+                case CMD_TRANSFER_DONE: {
+                    [pumpkin log:@"Transfer %d completed: %s", msg->transfer_id, msg->data];
+                    break;
+                }
+                    
+                default:
+                    [pumpkin log:@"Unknown command from TFTP helper: %d", msg->cmd];
+                    break;
             }
+            break;
         }
-        break;
+            
         default:
             NSLog(@"unhandled callback: %lu", t);
             break;
+    }
+}
+
+-(void)notifyTransferRequest:(uint16_t)transferId requestType:(NSString*)requestType
+                   clientIP:(NSString*)clientIP filename:(NSString*)filename mode:(NSString*)mode {
+    // For this simplified example, we'll auto-approve all transfers
+    // In a full implementation, you would:
+    // 1. Create a transfer object for UI display
+    // 2. Check user preferences for auto-approval/denial
+    // 3. Show a UI dialog if needed
+    
+    // For now, just approve all transfers
+    [self sendApproveTransfer:transferId];
+}
+
+-(void)sendApproveTransfer:(uint16_t)transferId {
+    ipc_message_t msg;
+    msg.cmd = CMD_TRANSFER_APPROVE;
+    msg.transfer_id = transferId;
+    msg.data[0] = '\0';
+    
+    // Send the message
+    NSData *data = [NSData dataWithBytes:&msg length:4 + 1]; // Just cmd + transfer_id + empty string
+    CFSocketError result = CFSocketSendData(sockie, NULL, (CFDataRef)data, 0);
+    
+    if (result != kCFSocketSuccess) {
+        [pumpkin log:@"Failed to send transfer approval: %d", result];
+    }
+}
+
+-(void)sendDenyTransfer:(uint16_t)transferId {
+    ipc_message_t msg;
+    msg.cmd = CMD_TRANSFER_DENY;
+    msg.transfer_id = transferId;
+    msg.data[0] = '\0';
+    
+    // Send the message
+    NSData *data = [NSData dataWithBytes:&msg length:4 + 1]; // Just cmd + transfer_id + empty string
+    CFSocketError result = CFSocketSendData(sockie, NULL, (CFDataRef)data, 0);
+    
+    if (result != kCFSocketSuccess) {
+        [pumpkin log:@"Failed to send transfer denial: %d", result];
+    }
+}
+
+-(void)sendConfiguration {
+    ipc_message_t msg;
+    msg.cmd = CMD_CONFIG;
+    msg.transfer_id = 0;
+    
+    // Send TFTP root directory
+    NSString *tftpRoot = [pumpkin.theDefaults.values valueForKey:@"tftpRoot"];
+    sprintf(msg.data, "tftp_root=%s", [tftpRoot UTF8String]);
+    
+    // Send the message
+    NSData *data = [NSData dataWithBytes:&msg length:4 + strlen(msg.data) + 1];
+    CFSocketError result = CFSocketSendData(sockie, NULL, (CFDataRef)data, 0);
+    
+    if (result != kCFSocketSuccess) {
+        [pumpkin log:@"Failed to send configuration: %d", result];
+    } else {
+        [pumpkin log:@"Configuration sent to TFTP helper"];
     }
 }
 
@@ -139,42 +222,6 @@ static void cbListener(CFSocketRef sockie,CFSocketCallBackType cbt,CFDataRef cba
                                userInfo:nil] raise];
             }
             
-            // Send a handshake to the helper and wait for response
-            char hello[] = "HELLO";
-            if (send(unix_sock, hello, strlen(hello), 0) < 0) {
-                close(unix_sock);
-                [[NSException exceptionWithName:@"ConnectionFailure"
-                              reason:[NSString stringWithFormat:@"Failed to send handshake to helper: %s", strerror(errno)]
-                              userInfo:nil] raise];
-            }
-
-            // Wait for response with timeout
-            fd_set readfds;
-            FD_ZERO(&readfds);
-            FD_SET(unix_sock, &readfds);
-            struct timeval tv;
-            tv.tv_sec = 2;  // 2 second timeout
-            tv.tv_usec = 0;
-
-            if (select(unix_sock + 1, &readfds, NULL, NULL, &tv) <= 0) {
-                close(unix_sock);
-                [[NSException exceptionWithName:@"ConnectionFailure"
-                              reason:@"Timeout waiting for helper response"
-                              userInfo:nil] raise];
-            }
-
-            // Read response
-            char response[20];
-            ssize_t bytes = recv(unix_sock, response, sizeof(response) - 1, 0);
-            if (bytes <= 0 || strncmp(response, "PUMPKIN_READY", 13) != 0) {
-                close(unix_sock);
-                [[NSException exceptionWithName:@"ConnectionFailure"
-                              reason:@"Invalid response from helper"
-                              userInfo:nil] raise];
-            }
-
-            [pumpkin log:@"Successfully established connection with helper"];
-            
             // Create a CFSocket wrapped around our Unix domain socket
             sockie = CFSocketCreateWithNative(kCFAllocatorDefault, unix_sock, 
                                          kCFSocketReadCallBack|kCFSocketDataCallBack,
@@ -190,7 +237,22 @@ static void cbListener(CFSocketRef sockie,CFSocketCallBackType cbt,CFDataRef cba
             // Set up the socket to not close when CFSocket is invalidated since we handle that ourselves
             CFSocketSetSocketFlags(sockie, CFSocketGetSocketFlags(sockie) & ~kCFSocketCloseOnInvalidate);
             
-            [pumpkin log:@"Connected to privileged port handler via Unix domain socket"];
+            // Send hello message to initialize the connection
+            ipc_message_t hello_msg;
+            hello_msg.cmd = CMD_HELLO;
+            hello_msg.transfer_id = 0;
+            strcpy(hello_msg.data, "HELLO");
+            
+            NSData *data = [NSData dataWithBytes:&hello_msg length:4 + 6]; // 4 bytes header + "HELLO\0"
+            CFSocketError result = CFSocketSendData(sockie, NULL, (CFDataRef)data, 0);
+            
+            if (result != kCFSocketSuccess) {
+                [[NSException exceptionWithName:@"ConnectionFailure"
+                               reason:@"Failed to send hello message to helper"
+                               userInfo:nil] raise];
+            }
+            
+            [pumpkin log:@"Hello message sent to privileged TFTP helper"];
         }
     } @catch(NSException *e) {
         if(sockie) {
@@ -207,12 +269,21 @@ static void cbListener(CFSocketRef sockie,CFSocketCallBackType cbt,CFDataRef cba
 
 -(void)dealloc {
     if(runloopSource) {
-	CFRunLoopRemoveSource(CFRunLoopGetCurrent(), runloopSource, kCFRunLoopDefaultMode);
-	CFRelease(runloopSource);
+        CFRunLoopRemoveSource(CFRunLoopGetCurrent(), runloopSource, kCFRunLoopDefaultMode);
+        CFRelease(runloopSource);
     }
     if(sockie) {
-	CFSocketInvalidate(sockie);
-	CFRelease(sockie);
+        // Send shutdown command before closing
+        ipc_message_t msg;
+        msg.cmd = CMD_SHUTDOWN;
+        msg.transfer_id = 0;
+        msg.data[0] = '\0';
+        
+        NSData *data = [NSData dataWithBytes:&msg length:4 + 1];
+        CFSocketSendData(sockie, NULL, (CFDataRef)data, 0);
+        
+        CFSocketInvalidate(sockie);
+        CFRelease(sockie);
     }
     [super dealloc];
 }
