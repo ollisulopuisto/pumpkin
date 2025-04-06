@@ -17,7 +17,7 @@
 #define LOG_INFO(fmt, ...) fprintf(stderr, "INFO: " fmt "\n", ##__VA_ARGS__)
 #define BUFFER_SIZE 4096
 
-// Forward packets between network and unix domain socket
+// Fix the forward_packets function to use a simpler format
 void forward_packets(int udp_sock, int unix_sock) {
     struct pollfd fds[2];
     char buffer[BUFFER_SIZE];
@@ -30,13 +30,10 @@ void forward_packets(int udp_sock, int unix_sock) {
     
     LOG_INFO("Starting packet forwarding between sockets");
     
-    // Make unix socket non-blocking for better performance
-    int flags = fcntl(unix_sock, F_GETFL, 0);
-    fcntl(unix_sock, F_SETFL, flags | O_NONBLOCK);
-    
     while (1) {
         int ret = poll(fds, 2, -1);
         if (ret < 0) {
+            if (errno == EINTR) continue;
             LOG_ERROR("Poll failed: %s", strerror(errno));
             break;
         }
@@ -46,31 +43,19 @@ void forward_packets(int udp_sock, int unix_sock) {
             struct sockaddr_in client_addr;
             socklen_t addr_len = sizeof(client_addr);
             
-            ssize_t bytes = recvfrom(udp_sock, buffer, sizeof(buffer), 0, 
-                                     (struct sockaddr*)&client_addr, &addr_len);
+            ssize_t bytes = recvfrom(udp_sock, buffer + sizeof(client_addr), 
+                                      BUFFER_SIZE - sizeof(client_addr), 0, 
+                                      (struct sockaddr*)&client_addr, &addr_len);
+            
             if (bytes > 0) {
                 LOG_INFO("Received %zd bytes from network", bytes);
                 
-                // Forward to Unix socket with sender information
-                struct msghdr msg;
-                struct iovec iov[2];
+                // Create a simple concatenated message: address + data
+                memcpy(buffer, &client_addr, sizeof(client_addr));
                 
-                // First part is the sender address
-                iov[0].iov_base = &client_addr;
-                iov[0].iov_len = sizeof(client_addr);
-                
-                // Second part is the actual data
-                iov[1].iov_base = buffer;
-                iov[1].iov_len = bytes;
-                
-                msg.msg_name = NULL;
-                msg.msg_namelen = 0;
-                msg.msg_iov = iov;
-                msg.msg_iovlen = 2;
-                msg.msg_control = NULL;
-                msg.msg_controllen = 0;
-                
-                if (sendmsg(unix_sock, &msg, 0) < 0) {
+                // Send to Unix socket
+                ssize_t sent = send(unix_sock, buffer, bytes + sizeof(client_addr), 0);
+                if (sent < 0) {
                     LOG_ERROR("Failed to forward to Unix socket: %s", strerror(errno));
                 }
             }
@@ -78,42 +63,25 @@ void forward_packets(int udp_sock, int unix_sock) {
         
         // Check for data from Unix socket (from app)
         if (fds[1].revents & POLLIN) {
-            struct msghdr msg;
-            struct iovec iov[2];
-            struct sockaddr_in dest_addr;
-            char addr_buf[sizeof(dest_addr)];
+            ssize_t bytes = recv(unix_sock, buffer, BUFFER_SIZE, 0);
             
-            // First iovec will contain the destination address
-            iov[0].iov_base = addr_buf;
-            iov[0].iov_len = sizeof(dest_addr);
-            
-            // Second iovec is the data buffer
-            iov[1].iov_base = buffer;
-            iov[1].iov_len = sizeof(buffer);
-            
-            msg.msg_name = NULL;
-            msg.msg_namelen = 0;
-            msg.msg_iov = iov;
-            msg.msg_iovlen = 2;
-            msg.msg_control = NULL;
-            msg.msg_controllen = 0;
-            
-            ssize_t bytes = recvmsg(unix_sock, &msg, 0);
-            if (bytes < 0) {
-                if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                    LOG_ERROR("Failed to receive from Unix socket: %s", strerror(errno));
-                }
-                continue;
-            }
-            
-            if (bytes > sizeof(dest_addr)) {
-                memcpy(&dest_addr, addr_buf, sizeof(dest_addr));
-                size_t data_len = bytes - sizeof(dest_addr);
-                
-                LOG_INFO("Forwarding %zu bytes to network", data_len);
-                if (sendto(udp_sock, buffer, data_len, 0, 
-                           (struct sockaddr*)&dest_addr, sizeof(dest_addr)) < 0) {
-                    LOG_ERROR("Failed to forward to UDP socket: %s", strerror(errno));
+            if (bytes > 0) {
+                // The first part contains the destination address
+                struct sockaddr_in dest_addr;
+                if (bytes > sizeof(dest_addr)) {
+                    memcpy(&dest_addr, buffer, sizeof(dest_addr));
+                    
+                    // Send the remaining data to the network
+                    ssize_t sent = sendto(udp_sock, 
+                                        buffer + sizeof(dest_addr),
+                                        bytes - sizeof(dest_addr), 
+                                        0, 
+                                        (struct sockaddr*)&dest_addr, 
+                                        sizeof(dest_addr));
+                    
+                    if (sent < 0) {
+                        LOG_ERROR("Failed to forward to network: %s", strerror(errno));
+                    }
                 }
             }
         }

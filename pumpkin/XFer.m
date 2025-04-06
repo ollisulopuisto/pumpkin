@@ -1,4 +1,3 @@
-
 #import "XFer.h"
 #import "TFTPPacket.h"
 #import "StringsAttached.h"
@@ -71,40 +70,64 @@ static void cbXfer(CFSocketRef sockie,CFSocketCallBackType cbt,CFDataRef cba,
 - (void) callbackWithType:(CFSocketCallBackType)t addr:(CFDataRef)a data:(const void *)d {
     if(!giveupTimer) [self renewHope];
     if(retryTimer) {
-	[retryTimer release]; [retryTimer invalidate]; retryTimer = nil;
+        [retryTimer release]; [retryTimer invalidate]; retryTimer = nil;
     }
     switch (t) {
-	case kCFSocketWriteCallBack:
-	    if(queue.count) {
-		TFTPPacket *p = queue[0];
-		CFSocketError r = CFSocketSendData(sockie, (CFDataRef)[NSData dataWithBytesNoCopy:&peer length:sizeof(peer) freeWhenDone:NO], (CFDataRef)[NSData dataWithData:p.data], 0);
-		if(r!=kCFSocketSuccess)
-		    [pumpkin log:@"Failed to send data, error %d",errno];
-		if(!(p.op==tftpOpDATA || p.op==tftpOpERROR)) {
-		    if(lastPacket) [lastPacket release];
-		    lastPacket = [p retain];
-		    if(retryTimer) {
-			[retryTimer invalidate]; [retryTimer release];
-		    }
-		    retryTimer = [[NSTimer scheduledTimerWithTimeInterval:retryTimeout target:self selector:@selector(retryTimeout) userInfo:nil repeats:NO] retain];
-		}else{
-		    [lastPacket release]; lastPacket = nil;
-		}
-		[queue removeObjectAtIndex:0];
-		if([queue count] || state==xferStateShutdown)
-		    CFSocketEnableCallBacks(sockie, kCFSocketWriteCallBack);
-	    }else if(state==xferStateShutdown) {
-		[pumpkin log:@"%@ Transfer of '%@' finished.",xferPrefix,xferFilename];
-		[self disappear];
-	    }
-	    break;
-	case kCFSocketDataCallBack:
-	    [self renewHope];
-	    [self eatTFTPPacket:[TFTPPacket packetWithData:(NSData*)d] from:(struct sockaddr_in*)CFDataGetBytePtr(a)];
-	    break;
-	default:
-	    NSLog(@"unhandled %lu callback",t);
-	    break;
+        case kCFSocketWriteCallBack:
+            if(queue.count) {
+                TFTPPacket *p = queue[0];
+                
+                // For privileged ports, prepend the destination address
+                if ([[pumpkin.theDefaults.values valueForKey:@"bindPort"] intValue] <= 1024) {
+                    // Create a buffer with the peer address followed by the packet data
+                    NSMutableData *fullPacket = [NSMutableData dataWithCapacity:sizeof(peer) + p.data.length];
+                    [fullPacket appendBytes:&peer length:sizeof(peer)];
+                    [fullPacket appendData:p.data];
+                    
+                    // Send the combined data
+                    CFSocketError r = CFSocketSendData(sockie, NULL, (CFDataRef)fullPacket, 0);
+                    if(r != kCFSocketSuccess)
+                        [pumpkin log:@"Failed to send data, error %d", errno];
+                } else {
+                    // For non-privileged ports, send directly
+                    CFSocketError r = CFSocketSendData(sockie, (CFDataRef)[NSData dataWithBytes:&peer length:sizeof(peer)], 
+                                                     (CFDataRef)p.data, 0);
+                    if(r != kCFSocketSuccess)
+                        [pumpkin log:@"Failed to send data, error %d", errno];
+                }
+                
+                // Handle packet retransmission for non-DATA/ERROR packets
+                if(!(p.op == tftpOpDATA || p.op == tftpOpERROR)) {
+                    if(lastPacket) [lastPacket release];
+                    lastPacket = [p retain];
+                    if(retryTimer) {
+                        [retryTimer invalidate]; [retryTimer release];
+                    }
+                    retryTimer = [[NSTimer scheduledTimerWithTimeInterval:retryTimeout 
+                                           target:self selector:@selector(retryTimeout) 
+                                           userInfo:nil repeats:NO] retain];
+                } else {
+                    [lastPacket release]; lastPacket = nil;
+                }
+                
+                [queue removeObjectAtIndex:0];
+                if([queue count] || state == xferStateShutdown)
+                    CFSocketEnableCallBacks(sockie, kCFSocketWriteCallBack);
+            } else if(state == xferStateShutdown) {
+                [pumpkin log:@"%@ Transfer of '%@' finished.", xferPrefix, xferFilename];
+                [self disappear];
+            }
+            break;
+            
+        case kCFSocketDataCallBack:
+            [self renewHope];
+            [self eatTFTPPacket:[TFTPPacket packetWithData:(NSData*)d] 
+                          from:(struct sockaddr_in*)CFDataGetBytePtr(a)];
+            break;
+            
+        default:
+            NSLog(@"unhandled %lu callback", t);
+            break;
     }
 }
 

@@ -20,16 +20,19 @@ static void cbListener(CFSocketRef sockie,CFSocketCallBackType cbt,CFDataRef cba
     switch(t) {
         case kCFSocketDataCallBack:
         {
-            // When using Unix domain socket, the first part of the data is the client address
             struct sockaddr_in *sin;
             const char *payload;
             size_t payload_len;
             
-            if (ntohs(((struct sockaddr_in*)[pumpkin.theDefaults.values valueForKey:@"bindPort"]).sin_port) <= 1024) {
-                // For privileged ports, extract the sender address from the message
+            if ([[pumpkin.theDefaults.values valueForKey:@"bindPort"] intValue] <= 1024) {
+                // For privileged ports, the first sizeof(struct sockaddr_in) bytes are the client address
                 sin = (struct sockaddr_in*)d;
                 payload = (const char*)d + sizeof(struct sockaddr_in);
                 payload_len = CFDataGetLength((CFDataRef)a) - sizeof(struct sockaddr_in);
+                
+                [pumpkin log:@"Received packet from %@:%d via helper", 
+                         [NSString stringWithCString:inet_ntoa(sin->sin_addr) encoding:NSUTF8StringEncoding],
+                         ntohs(sin->sin_port)];
             } else {
                 // For non-privileged ports, use the address from the packet
                 sin = (struct sockaddr_in*)CFDataGetBytePtr(a);
@@ -44,16 +47,26 @@ static void cbListener(CFSocketRef sockie,CFSocketCallBackType cbt,CFDataRef cba
             }
             
             // Create a TFTPPacket with just the payload data
-            NSData *packetData = [NSData dataWithBytes:payload length:payload_len];
-            TFTPPacket *p = [TFTPPacket packetWithData:packetData];
-            
-            switch([p op]) {
-                case tftpOpRRQ: [[[SendXFer alloc] initWithPeer:sin andPacket:p] autorelease]; break;
-                case tftpOpWRQ: [[[ReceiveXFer alloc] initWithPeer:sin andPacket:p] autorelease]; break;
-                default:
-                    [pumpkin log:@"Invalid OP %d received from %@", p.op, 
-                             [NSString stringWithSocketAddress:sin]];
-                    break;
+            if (payload_len > 0) {
+                NSData *packetData = [NSData dataWithBytes:payload length:payload_len];
+                TFTPPacket *p = [TFTPPacket packetWithData:packetData];
+                
+                switch([p op]) {
+                    case tftpOpRRQ: 
+                        [pumpkin log:@"Received RRQ for file %@", p.rqFilename];
+                        [[[SendXFer alloc] initWithPeer:sin andPacket:p] autorelease]; 
+                        break;
+                    case tftpOpWRQ: 
+                        [pumpkin log:@"Received WRQ for file %@", p.rqFilename];
+                        [[[ReceiveXFer alloc] initWithPeer:sin andPacket:p] autorelease]; 
+                        break;
+                    default:
+                        [pumpkin log:@"Invalid OP %d received from %@", p.op, 
+                                 [NSString stringWithSocketAddress:sin]];
+                        break;
+                }
+            } else {
+                [pumpkin log:@"Received empty packet from socket"];
             }
         }
         break;
