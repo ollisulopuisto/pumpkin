@@ -135,9 +135,52 @@ int main(int argc, const char * argv[]) {
         return 0;
     }
     
-    // Keep existing code for killing system TFTP daemon
+    // Kill system TFTP daemon mode
     if (argc == 2 && !strcmp(argv[1], "-k")) {
-        // Existing code...
+        pid_t child_pid;
+        int status;
+        char *launchctl_args[] = {
+            "/bin/launchctl", 
+            "unload",
+            "-w",
+            "/System/Library/LaunchDaemons/tftp.plist", 
+            NULL
+        };
+        
+        // Use posix_spawn instead of fork+exec
+        status = posix_spawn(&child_pid, "/bin/launchctl", NULL, NULL, 
+                           launchctl_args, NULL);
+        
+        if (status != 0) {
+            fprintf(stderr, "posix_spawn failed: %s\n", strerror(status));
+            printf("%d", status);
+            return 5;
+        }
+        
+        // Wait for the process to complete
+        if (waitpid(child_pid, &status, 0) == -1) {
+            fprintf(stderr, "waitpid failed: %s\n", strerror(errno));
+            printf("%d", errno);
+            return 6;
+        }
+        
+        // If the first attempt fails, try the newer bootout syntax
+        if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+            fprintf(stderr, "First launchctl command failed, trying alternative method\n");
+            
+            launchctl_args[1] = "bootout";
+            launchctl_args[2] = "system/com.apple.tftpd";
+            launchctl_args[3] = NULL;
+            
+            status = posix_spawn(&child_pid, "/bin/launchctl", NULL, NULL, 
+                               launchctl_args, NULL);
+                               
+            if (status == 0) {
+                waitpid(child_pid, &status, 0);
+            }
+        }
+        
+        fprintf(stderr, "launchctl terminated with %d\n", WEXITSTATUS(status));
         return WEXITSTATUS(status);
     }
     
