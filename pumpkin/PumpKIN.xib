@@ -365,7 +365,7 @@
                                     <connections>
                                         <binding destination="915" name="value" keyPath="values.bindPort" id="1153">
                                             <dictionary key="options">
-                                                <string key="NSValueTransformerName">NumberTransformer</string>
+                                                <string key="NSValueTransformerName">PortNumberTransformer</string>
                                             </dictionary>
                                         </binding>
                                         <outlet property="formatter" destination="1096" id="1097"/>

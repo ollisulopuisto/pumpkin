@@ -41,6 +41,7 @@
 		9B0110C40000000000000003 /* StringsAttachedTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B0110C4000000000000000E /* StringsAttachedTests.m */; };
 		9B0110C40000000000000004 /* TFTPPacket.m in Sources */ = {isa = PBXBuildFile; fileRef = 682A2791141BD97B005AB8FB /* TFTPPacket.m */; };
 		9B0110C40000000000000005 /* NumberTransformer.m in Sources */ = {isa = PBXBuildFile; fileRef = 680E89A81482EF73008C9134 /* NumberTransformer.m */; };
+		9B0110C40000000000000044 /* NSPortNumberTransformer.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B0110C40000000000000019 /* NSPortNumberTransformer.m */; };
 		9B0110C40000000000000006 /* NSPortNumberTransformer.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B0110C40000000000000019 /* NSPortNumberTransformer.m */; };
 		9B0110C40000000000000007 /* IPTransformer.m in Sources */ = {isa = PBXBuildFile; fileRef = 6808EC79166158AE00F479A9 /* IPTransformer.m */; };
 		9B0110C40000000000000008 /* StringsAttached.m in Sources */ = {isa = PBXBuildFile; fileRef = 685CCB1114D5BA1300F5B76B /* StringsAttached.m */; };
@@ -422,6 +423,7 @@
 				682A27901419688B005AB8FB /* XFer.m in Sources */,
 				682A2792141BD97B005AB8FB /* TFTPPacket.m in Sources */,
 				680E89A91482EF73008C9134 /* NumberTransformer.m in Sources */,
+				9B0110C40000000000000044 /* NSPortNumberTransformer.m in Sources */,
 				68783E43148585EB00DEE0B5 /* IPFormatter.m in Sources */,
 				685CCB0F14D4AC7700F5B76B /* XFersViewDatasource.m in Sources */,
 				685CCB1214D5BA1300F5B76B /* StringsAttached.m in Sources */,
