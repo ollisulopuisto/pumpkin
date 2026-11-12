@@ -15,6 +15,8 @@
 #include <dirent.h>
 #include <signal.h>
 #include <limits.h>   // For PATH_MAX
+#include <sys/wait.h> // For waitpid()
+#include <strings.h>  // For strcasecmp()
 #include <time.h>     // For time() function
 
 #define SOCKET_PATH "/tmp/pumpkin_socket"
@@ -651,6 +653,7 @@ void handle_write_request(int sock, struct sockaddr_in *client_addr, char *filen
 }
 
 void process_transfer(int sock, transfer_t *transfer) {
+    (void)sock; // unused in the current stub implementation
     // This function processes an active transfer
     // For simplicity, we're not implementing the actual TFTP protocol here
     // A full implementation would need to handle DATA, ACK, ERROR packets

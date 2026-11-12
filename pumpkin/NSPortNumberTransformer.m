@@ -8,14 +8,14 @@
     if(value==nil) return nil;
     if(![value respondsToSelector:@selector(integerValue)]) return nil;
     NSInteger rv = [value integerValue];
-    if(rv<1 || rv>32767) return nil;
+    if(rv<1 || rv>65535) return nil;
     return [NSString stringWithFormat:@"%u",rv];
 }
 -(id)reverseTransformedValue:(id)value {
     if(value==nil) return nil;
     if(![value respondsToSelector:@selector(integerValue)]) return nil;
     NSInteger rv = [value integerValue];
-    if(rv<1 || rv>32767) return nil;
+    if(rv<1 || rv>65535) return nil;
     return [NSNumber numberWithInteger:rv];
 }
 
