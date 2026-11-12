@@ -59,6 +59,22 @@
     XCTAssertNil([t reverseTransformedValue:@"70000"]);
 }
 
+// The port field's NSNumberFormatter caps what the user can type, so it must
+// allow the same range as the transformer.
+- (void)testServerPortFormatterAllowsTheFullPortRange {
+    NSString *dir = [[[NSString stringWithUTF8String:__FILE__] stringByDeletingLastPathComponent]
+                     stringByDeletingLastPathComponent];
+    NSString *path = [[dir stringByAppendingPathComponent:@"pumpkin"] stringByAppendingPathComponent:@"PumpKIN.xib"];
+    NSString *xml = [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:NULL];
+    XCTAssertNotNil(xml);
+    NSRegularExpression *re = [NSRegularExpression regularExpressionWithPattern:
+        @"userLabel=\"Port formatter\">[^<]*(?:<(?!/numberFormatter)[^>]*>[^<]*)*?<real key=\"maximum\" value=\"(\\d+)\""
+        options:0 error:NULL];
+    NSTextCheckingResult *m = [re firstMatchInString:xml options:0 range:NSMakeRange(0, xml.length)];
+    XCTAssertNotNil(m, @"Port formatter maximum not found in PumpKIN.xib");
+    XCTAssertEqual([[xml substringWithRange:[m rangeAtIndex:1]] integerValue], 65535);
+}
+
 - (void)testIPTransformer {
     IPTransformer *t = [[[IPTransformer alloc] init] autorelease];
     XCTAssertEqualObjects([t transformedValue:@"192.168.0.1"], @"192.168.0.1");
