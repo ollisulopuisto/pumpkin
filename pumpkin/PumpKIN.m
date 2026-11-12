@@ -3,6 +3,7 @@
 
 #import "PumpKIN.h"
 #import "NumberTransformer.h"
+#import "NSPortNumberTransformer.h"
 #import "IPTransformer.h"
 #import "XFer.h"
 #import "XFersViewDatasource.h"
@@ -382,7 +383,7 @@
       [[NSBundle mainBundle] pathForResource:@"pumpkin-defaults" ofType:@"plist"]
      ]
     ];
-    [NSValueTransformer setValueTransformer:[[[NumberTransformer alloc] init] autorelease] forName:@"PortNumberTransformer"];
+    [NSPortNumberTransformer registerForPortBindings];
     [NSValueTransformer setValueTransformer:[[[IPTransformer alloc] init] autorelease] forName:@"IPAddressTransformer"];
 }
 

@@ -57,9 +57,12 @@
 }
 -(NSString*)rqType {
     NSAssert( self.isRQOp, @"Wrong TFTP opcode for rq type retrieval");
-    const char *z = (const char*)memchr(packet->rq.data,0, data.length-sizeof(packet->op));
+    size_t rqLength = data.length-sizeof(packet->op);
+    const char *z = (const char*)memchr(packet->rq.data,0, rqLength);
     if(!z) return nil;
-    if(!memchr(z+1,0,data.length-sizeof(packet->op)-(z-packet->rq.data))) return nil;
+    size_t used = z-packet->rq.data+1;
+    if(used>=rqLength) return nil;
+    if(!memchr(z+1,0,rqLength-used)) return nil;
     return @(z+1);
 }
 -(NSDictionary*)rqOptions {
@@ -114,7 +117,7 @@
     return [[[self alloc] initWithData:d] autorelease];
 }
 +(TFTPPacket*)packetWithBytesNoCopy:(void*)b andLength:(size_t)l {
-    return [[[self alloc] initWithData:[NSData dataWithBytesNoCopy:b length:l]] autorelease];
+    return [[[self alloc] initWithData:[NSData dataWithBytesNoCopy:b length:l freeWhenDone:YES]] autorelease];
 }
 
 +(TFTPPacket*)packetErrorWithCode:(enum TFTPError)c andMessage:(NSString*)m {
@@ -122,7 +125,7 @@
     struct AnyTFTPPacket *b = (struct AnyTFTPPacket*)malloc(bb = sizeof(b->op)+sizeof(b->err.code)+ml+1);
     if(!b) return nil;
     b->op = htons(tftpOpERROR);
-    b->err.code = ntohs(c);
+    b->err.code = htons(c);
     [m getBytes:b->err.data maxLength:ml usedLength:NULL encoding:NSUTF8StringEncoding options:0 range:NSMakeRange(0,m.length) remainingRange:NULL];
     b->err.data[ml]=0;
     return [self packetWithBytesNoCopy:b andLength:bb];
@@ -130,7 +133,7 @@
 +(TFTPPacket*)packetErrorWithErrno:(int)en andFallback:(NSString *)fb{
     switch(en) {
 	case EACCES:
-	    return [self packetErrorWithCode:tftpErrAccessViolation andMessage:@"acess violation"];
+	    return [self packetErrorWithCode:tftpErrAccessViolation andMessage:@"access violation"];
 	case ENOENT:
 	    return [self packetErrorWithCode:tftpErrNotFound andMessage:@"not found"];
     }
@@ -173,7 +176,7 @@
     if(!b) return nil;
     b->op = htons(tftpOpOACK);
     __block char *p = b->oack.data;
-    rc -= [o tftpGetBytes:p maxLength:pl];
+    rc -= [o tftpGetBytes:p maxLength:rc];
     NSAssert1(rc==0,@"packet of the wrong size, remaining count: %lu",rc);
     return [self packetWithBytesNoCopy:b andLength:pl];
 }

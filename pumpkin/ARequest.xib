@@ -108,7 +108,7 @@
                             <binding destination="-2" name="enabled" keyPath="self.doTouchMe" id="87"/>
                             <binding destination="-2" name="value" keyPath="self.remotePort" id="111">
                                 <dictionary key="options">
-                                    <string key="NSValueTransformerName">NumberTransformer</string>
+                                    <string key="NSValueTransformerName">PortNumberTransformer</string>
                                 </dictionary>
                             </binding>
                         </connections>

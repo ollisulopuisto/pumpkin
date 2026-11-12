@@ -36,6 +36,17 @@
 		68DAEE1614118CB60007A630 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 68DAEE1514118CB60007A630 /* main.m */; };
 		68DAEE1D14118CB60007A630 /* PumpKIN.m in Sources */ = {isa = PBXBuildFile; fileRef = 68DAEE1C14118CB60007A630 /* PumpKIN.m */; };
 		68DAEE2E14118D370007A630 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 68DAEE2D14118D370007A630 /* main.c */; };
+		9B0110C40000000000000001 /* TFTPPacketTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B0110C4000000000000000C /* TFTPPacketTests.m */; };
+		9B0110C40000000000000002 /* TransformerTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B0110C4000000000000000D /* TransformerTests.m */; };
+		9B0110C40000000000000003 /* StringsAttachedTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B0110C4000000000000000E /* StringsAttachedTests.m */; };
+		9B0110C40000000000000004 /* TFTPPacket.m in Sources */ = {isa = PBXBuildFile; fileRef = 682A2791141BD97B005AB8FB /* TFTPPacket.m */; };
+		9B0110C40000000000000005 /* NumberTransformer.m in Sources */ = {isa = PBXBuildFile; fileRef = 680E89A81482EF73008C9134 /* NumberTransformer.m */; };
+		9B0110C40000000000000044 /* NSPortNumberTransformer.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B0110C40000000000000019 /* NSPortNumberTransformer.m */; };
+		9B0110C40000000000000006 /* NSPortNumberTransformer.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B0110C40000000000000019 /* NSPortNumberTransformer.m */; };
+		9B0110C40000000000000007 /* IPTransformer.m in Sources */ = {isa = PBXBuildFile; fileRef = 6808EC79166158AE00F479A9 /* IPTransformer.m */; };
+		9B0110C40000000000000008 /* StringsAttached.m in Sources */ = {isa = PBXBuildFile; fileRef = 685CCB1114D5BA1300F5B76B /* StringsAttached.m */; };
+		9B0110C40000000000000009 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9B0110C4000000000000000A /* XCTest.framework */; };
+		9B0110C40000000000000017 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 68428F79166BAFB500AF8D8C /* Cocoa.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -116,6 +127,13 @@
 		68DAEE1B14118CB60007A630 /* PumpKIN.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PumpKIN.h; sourceTree = "<group>"; };
 		68DAEE1C14118CB60007A630 /* PumpKIN.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PumpKIN.m; sourceTree = "<group>"; };
 		68DAEE2D14118D370007A630 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
+		9B0110C4000000000000000A /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = System/Library/Frameworks/XCTest.framework; sourceTree = SDKROOT; };
+		9B0110C4000000000000000B /* pumpkinTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = pumpkinTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9B0110C4000000000000000C /* TFTPPacketTests.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TFTPPacketTests.m; sourceTree = "<group>"; };
+		9B0110C4000000000000000D /* TransformerTests.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TransformerTests.m; sourceTree = "<group>"; };
+		9B0110C4000000000000000E /* StringsAttachedTests.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = StringsAttachedTests.m; sourceTree = "<group>"; };
+		9B0110C40000000000000018 /* NSPortNumberTransformer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NSPortNumberTransformer.h; sourceTree = "<group>"; };
+		9B0110C40000000000000019 /* NSPortNumberTransformer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = NSPortNumberTransformer.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -132,6 +150,15 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9B0110C40000000000000011 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9B0110C40000000000000009 /* XCTest.framework in Frameworks */,
+				9B0110C40000000000000017 /* Cocoa.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -154,9 +181,11 @@
 			children = (
 				68DAEE0F14118CB60007A630 /* pumpkin */,
 				68DAEE2C14118D370007A630 /* biportal */,
+				9B0110C4000000000000000F /* pumpkinTests */,
 				68DAEE0814118CB60007A630 /* Frameworks */,
 				400D22001E0F4C3D004FB763 /* pumpkin.app */,
 				400D22011E0F4C3D004FB763 /* biportal */,
+				9B0110C4000000000000000B /* pumpkinTests.xctest */,
 			);
 			sourceTree = "<group>";
 		};
@@ -165,6 +194,7 @@
 			children = (
 				68428F7B166BAFC600AF8D8C /* Security.framework */,
 				68428F79166BAFB500AF8D8C /* Cocoa.framework */,
+				9B0110C4000000000000000A /* XCTest.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -200,6 +230,8 @@
 				685CCB1114D5BA1300F5B76B /* StringsAttached.m */,
 				680E89A71482EF73008C9134 /* NumberTransformer.h */,
 				680E89A81482EF73008C9134 /* NumberTransformer.m */,
+				9B0110C40000000000000018 /* NSPortNumberTransformer.h */,
+				9B0110C40000000000000019 /* NSPortNumberTransformer.m */,
 				68783E41148585EA00DEE0B5 /* IPFormatter.h */,
 				68783E42148585EB00DEE0B5 /* IPFormatter.m */,
 				680E89A41482B03A008C9134 /* pumpkin-defaults.plist */,
@@ -227,6 +259,16 @@
 				68DAEE2D14118D370007A630 /* main.c */,
 			);
 			path = biportal;
+			sourceTree = "<group>";
+		};
+		9B0110C4000000000000000F /* pumpkinTests */ = {
+			isa = PBXGroup;
+			children = (
+				9B0110C4000000000000000C /* TFTPPacketTests.m */,
+				9B0110C4000000000000000D /* TransformerTests.m */,
+				9B0110C4000000000000000E /* StringsAttachedTests.m */,
+			);
+			path = pumpkinTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -269,6 +311,23 @@
 			productReference = 400D22011E0F4C3D004FB763 /* biportal */;
 			productType = "com.apple.product-type.tool";
 		};
+		9B0110C40000000000000013 /* pumpkinTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9B0110C40000000000000016 /* Build configuration list for PBXNativeTarget "pumpkinTests" */;
+			buildPhases = (
+				9B0110C40000000000000010 /* Sources */,
+				9B0110C40000000000000011 /* Frameworks */,
+				9B0110C40000000000000012 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = pumpkinTests;
+			productName = pumpkinTests;
+			productReference = 9B0110C4000000000000000B /* pumpkinTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -300,6 +359,7 @@
 			targets = (
 				68DAEE0414118CB60007A630 /* pumpkin */,
 				68DAEE2914118D370007A630 /* biportal */,
+				9B0110C40000000000000013 /* pumpkinTests */,
 			);
 		};
 /* End PBXProject section */
@@ -323,6 +383,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9B0110C40000000000000012 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
@@ -340,7 +407,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -ex\n\nrm -f \"$BUILT_PRODUCTS_DIR/$PRODUCT_NAME-hybrid.dmg\"\nrm -rf \"$BUILT_PRODUCTS_DIR/DMG\" && mkdir -p \"$BUILT_PRODUCTS_DIR/DMG\"\ncp -R \"$BUILT_PRODUCTS_DIR/$PRODUCT_NAME.app\" \"$BUILT_PRODUCTS_DIR/DMG\"\nmkdir \"$BUILT_PRODUCTS_DIR/DMG/.background\"\n#cp \"$SRCROOT/dmg-background.png\" \"$BUILT_PRODUCTS_DIR/DMG/.background/background.png\"\ncp \"$SRCROOT/dmg-DS_Store\" \"$BUILT_PRODUCTS_DIR/DMG/.DS_Store\"\nln -s /Applications \"$BUILT_PRODUCTS_DIR/DMG/Applications\"\nhdiutil makehybrid -o \"$BUILT_PRODUCTS_DIR/$PRODUCT_NAME-hybrid.dmg\" -hfs -hfs-openfolder \"$BUILT_PRODUCTS_DIR/DMG\" -default-volume-name \"PumpKIN\" \"$BUILT_PRODUCTS_DIR/DMG\"\nrm -rf \"$BUILT_PRODUCTS_DIR/DMG\"\n\nrm -f \"$BUILT_PRODUCTS_DIR/$PRODUCT_NAME.dmg\"\nhdiutil convert -format UDZO -o \"$BUILT_PRODUCTS_DIR/$PRODUCT_NAME.dmg\" \"$BUILT_PRODUCTS_DIR/$PRODUCT_NAME-hybrid.dmg\"\n";
+			shellScript = "set -ex\n\nif [ \"$CONFIGURATION\" != \"Release\" ]; then\necho \"Skipping DMG creation for $CONFIGURATION build\"\nexit 0\nfi\n\nrm -f \"$BUILT_PRODUCTS_DIR/$PRODUCT_NAME-hybrid.dmg\"\nrm -rf \"$BUILT_PRODUCTS_DIR/DMG\" && mkdir -p \"$BUILT_PRODUCTS_DIR/DMG\"\ncp -R \"$BUILT_PRODUCTS_DIR/$PRODUCT_NAME.app\" \"$BUILT_PRODUCTS_DIR/DMG\"\nmkdir \"$BUILT_PRODUCTS_DIR/DMG/.background\"\n#cp \"$SRCROOT/dmg-background.png\" \"$BUILT_PRODUCTS_DIR/DMG/.background/background.png\"\ncp \"$SRCROOT/dmg-DS_Store\" \"$BUILT_PRODUCTS_DIR/DMG/.DS_Store\"\nln -s /Applications \"$BUILT_PRODUCTS_DIR/DMG/Applications\"\nhdiutil makehybrid -o \"$BUILT_PRODUCTS_DIR/$PRODUCT_NAME-hybrid.dmg\" -hfs -hfs-openfolder \"$BUILT_PRODUCTS_DIR/DMG\" -default-volume-name \"PumpKIN\" \"$BUILT_PRODUCTS_DIR/DMG\"\nrm -rf \"$BUILT_PRODUCTS_DIR/DMG\"\n\nrm -f \"$BUILT_PRODUCTS_DIR/$PRODUCT_NAME.dmg\"\nhdiutil convert -format UDZO -o \"$BUILT_PRODUCTS_DIR/$PRODUCT_NAME.dmg\" \"$BUILT_PRODUCTS_DIR/$PRODUCT_NAME-hybrid.dmg\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -356,6 +423,7 @@
 				682A27901419688B005AB8FB /* XFer.m in Sources */,
 				682A2792141BD97B005AB8FB /* TFTPPacket.m in Sources */,
 				680E89A91482EF73008C9134 /* NumberTransformer.m in Sources */,
+				9B0110C40000000000000044 /* NSPortNumberTransformer.m in Sources */,
 				68783E43148585EB00DEE0B5 /* IPFormatter.m in Sources */,
 				685CCB0F14D4AC7700F5B76B /* XFersViewDatasource.m in Sources */,
 				685CCB1214D5BA1300F5B76B /* StringsAttached.m in Sources */,
@@ -371,6 +439,21 @@
 			buildActionMask = 2147483647;
 			files = (
 				68DAEE2E14118D370007A630 /* main.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9B0110C40000000000000010 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9B0110C40000000000000001 /* TFTPPacketTests.m in Sources */,
+				9B0110C40000000000000002 /* TransformerTests.m in Sources */,
+				9B0110C40000000000000003 /* StringsAttachedTests.m in Sources */,
+				9B0110C40000000000000004 /* TFTPPacket.m in Sources */,
+				9B0110C40000000000000005 /* NumberTransformer.m in Sources */,
+				9B0110C40000000000000006 /* NSPortNumberTransformer.m in Sources */,
+				9B0110C40000000000000007 /* IPTransformer.m in Sources */,
+				9B0110C40000000000000008 /* StringsAttached.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -474,7 +557,7 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "pumpkin/pumpkin-Prefix.pch";
 				INFOPLIST_FILE = "pumpkin/pumpkin-Info.plist";
-				MACOSX_DEPLOYMENT_TARGET = 10.10;
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				PRODUCT_BUNDLE_IDENTIFIER = "net.klever.kin.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WRAPPER_EXTENSION = app;
@@ -491,7 +574,7 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "pumpkin/pumpkin-Prefix.pch";
 				INFOPLIST_FILE = "pumpkin/pumpkin-Info.plist";
-				MACOSX_DEPLOYMENT_TARGET = 10.10;
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				PRODUCT_BUNDLE_IDENTIFIER = "net.klever.kin.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WRAPPER_EXTENSION = app;
@@ -514,6 +597,34 @@
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = LWSR8T5392;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+		9B0110C40000000000000014 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_ARC = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = "$(SRCROOT)/pumpkin";
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
+				PRODUCT_BUNDLE_IDENTIFIER = "net.klever.kin.pumpkinTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		9B0110C40000000000000015 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_ARC = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = "$(SRCROOT)/pumpkin";
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
+				PRODUCT_BUNDLE_IDENTIFIER = "net.klever.kin.pumpkinTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
@@ -543,6 +654,15 @@
 			buildConfigurations = (
 				68DAEE3214118D370007A630 /* Debug */,
 				68DAEE3314118D370007A630 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		9B0110C40000000000000016 /* Build configuration list for PBXNativeTarget "pumpkinTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9B0110C40000000000000014 /* Debug */,
+				9B0110C40000000000000015 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
